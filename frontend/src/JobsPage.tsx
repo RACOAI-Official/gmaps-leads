@@ -27,7 +27,11 @@ export function JobsPage() {
   const jobs = data?.items ?? [];
 
   return (
-    <>
+    <div className="panel">
+      <div className="panel-head">
+        <h3>Scrape Jobs</h3>
+      </div>
+
       <div className="toolbar">
         <input
           placeholder='Query e.g. "software company in Dhaka"'
@@ -35,7 +39,11 @@ export function JobsPage() {
           onChange={(e) => setQuery(e.target.value)}
           style={{ minWidth: 320 }}
         />
-        <input placeholder="City" value={city} onChange={(e) => setCity(e.target.value)} />
+        <input
+          placeholder="City"
+          value={city}
+          onChange={(e) => setCity(e.target.value)}
+        />
         <input
           type="number"
           value={maxResults}
@@ -57,44 +65,44 @@ export function JobsPage() {
         >
           Queue scrape
         </button>
-        <span className="muted count">
-          Scraper poller picks up pending jobs.
-        </span>
+        <span className="muted count">Scraper poller picks up pending jobs.</span>
       </div>
 
-      <table>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Query</th>
-            <th>City</th>
-            <th>Status</th>
-            <th>Saved</th>
-            <th>Created</th>
-            <th>Error</th>
-          </tr>
-        </thead>
-        <tbody>
-          {jobs.map((j) => (
-            <tr key={j.id}>
-              <td>{j.id}</td>
-              <td>{j.params.query}</td>
-              <td>{j.params.city ?? "—"}</td>
-              <td className={`status-${j.status}`}>{j.status}</td>
-              <td>{j.progress}</td>
-              <td>{j.created_at ? new Date(j.created_at).toLocaleString() : "—"}</td>
-              <td className="muted">{j.error ?? ""}</td>
-            </tr>
-          ))}
-          {jobs.length === 0 && (
+      <div className="table-wrap">
+        <table>
+          <thead>
             <tr>
-              <td colSpan={7} className="muted">
-                No jobs yet.
-              </td>
+              <th>ID</th>
+              <th>Query</th>
+              <th>City</th>
+              <th>Status</th>
+              <th>Saved</th>
+              <th>Created</th>
+              <th>Error</th>
             </tr>
-          )}
-        </tbody>
-      </table>
-    </>
+          </thead>
+          <tbody>
+            {jobs.map((j) => (
+              <tr key={j.id}>
+                <td>{j.id}</td>
+                <td>{j.params.query}</td>
+                <td>{j.params.city ?? "—"}</td>
+                <td className={`status-${j.status}`}>{j.status}</td>
+                <td>{j.progress}</td>
+                <td>{j.created_at ? new Date(j.created_at).toLocaleString() : "—"}</td>
+                <td className="muted">{j.error ?? ""}</td>
+              </tr>
+            ))}
+            {jobs.length === 0 && (
+              <tr>
+                <td colSpan={7} className="muted">
+                  No jobs yet.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }

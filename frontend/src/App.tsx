@@ -1,31 +1,43 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Sidebar, type Page } from "./Sidebar.tsx";
+import { Topbar } from "./Topbar.tsx";
 import { LeadsPage } from "./LeadsPage.tsx";
 import { JobsPage } from "./JobsPage.tsx";
-
-type Tab = "leads" | "jobs";
+import { fetchLeads } from "./api.ts";
 
 export function App() {
-  const [tab, setTab] = useState<Tab>("leads");
+  const [page, setPage] = useState<Page>("leads");
+
+  const { data: count } = useQuery({
+    queryKey: ["leads-count"],
+    queryFn: () => fetchLeads({ page_size: 1 }),
+    select: (d) => d.total,
+  });
+
+  const topbar =
+    page === "leads"
+      ? {
+          title: "Lead Dashboard",
+          subtitle:
+            count != null
+              ? `${count.toLocaleString()} businesses scraped from Google Maps`
+              : "Loading leads…",
+        }
+      : {
+          title: "Scrape Jobs",
+          subtitle: "Queue and monitor Google Maps scrape runs",
+        };
+
   return (
-    <div className="app">
-      <header className="topbar">
-        <h1>gmaps-leads</h1>
-        <nav>
-          <button
-            className={tab === "leads" ? "active" : ""}
-            onClick={() => setTab("leads")}
-          >
-            Leads
-          </button>
-          <button
-            className={tab === "jobs" ? "active" : ""}
-            onClick={() => setTab("jobs")}
-          >
-            Jobs
-          </button>
-        </nav>
-      </header>
-      {tab === "leads" ? <LeadsPage /> : <JobsPage />}
+    <div className="shell">
+      <div className="card">
+        <Sidebar page={page} onNavigate={setPage} />
+        <main className="main">
+          <Topbar title={topbar.title} subtitle={topbar.subtitle} />
+          {page === "leads" ? <LeadsPage /> : <JobsPage />}
+        </main>
+      </div>
     </div>
   );
 }
