@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgres:16
+    container_name: gmaps_leads_db
+    environment:
+      POSTGRES_USER: gmaps
+      POSTGRES_PASSWORD: gmaps_dev
+      POSTGRES_DB: gmaps_leads
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gmaps -d gmaps_leads"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:
