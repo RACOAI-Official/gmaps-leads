@@ -90,3 +90,22 @@ class Score(Base):
     scored_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+
+
+class RuntimeConfig(Base):
+    """Live-overridable settings. Single row (id=1) seeded by migration.
+
+    Read via ``app.config.get_runtime_config()`` so env defaults are merged with
+    DB overrides. Covers only knobs safe to change between jobs (delays, daily
+    cap); headless/cooldown stay env-only (decorator-bound) — see CLAUDE.md.
+    """
+
+    __tablename__ = "runtime_config"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    scrape_delay_min_s: Mapped[float] = mapped_column(Float)
+    scrape_delay_max_s: Mapped[float] = mapped_column(Float)
+    scrape_daily_cap: Mapped[int] = mapped_column(Integer)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )

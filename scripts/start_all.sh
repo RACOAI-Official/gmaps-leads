@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Start the full gmaps-leads stack: Postgres (docker), backend API, scraper poller, frontend.
-# Idempotent: bootstraps .env / .venv / node_modules / migrations on first run.
+# Start the full gmaps-leads stack: Postgres (docker), backend API, unified worker,
+# frontend. Idempotent: bootstraps .env / .venv / node_modules / migrations on first run.
 # Services run in a tmux session named "gmaps-leads" (one window per service).
+# The worker handles all job types (scrape | enrich | score) sequentially.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -62,8 +63,8 @@ else
   log "launching services in tmux session '$SESSION'"
   tmux new-session  -d -s "$SESSION" -n backend  -c "$ROOT"
   tmux send-keys    -t "$SESSION:backend"  "$PY -m uvicorn app.api.main:app --reload --port 8000" C-m
-  tmux new-window   -t "$SESSION" -n scraper  -c "$ROOT"
-  tmux send-keys    -t "$SESSION:scraper"  "$PY -m app.scraper poll" C-m
+  tmux new-window   -t "$SESSION" -n worker   -c "$ROOT"
+  tmux send-keys    -t "$SESSION:worker"   "$PY -m app.worker poll" C-m
   tmux new-window   -t "$SESSION" -n frontend -c "$ROOT/frontend"
   tmux send-keys    -t "$SESSION:frontend" "npm run dev" C-m
   tmux select-window -t "$SESSION:backend"
@@ -71,7 +72,7 @@ fi
 
 log "backend:  http://localhost:8000/api/health"
 log "frontend: http://localhost:5173"
-log "windows:  backend | scraper | frontend  (Ctrl-b n/p to switch, Ctrl-b d to detach)"
+log "windows:  backend | worker | frontend  (Ctrl-b n/p to switch, Ctrl-b d to detach)"
 
 # Attach only when run from an interactive terminal (not from inside tmux).
 if [[ -t 1 && -z "${TMUX:-}" ]]; then
