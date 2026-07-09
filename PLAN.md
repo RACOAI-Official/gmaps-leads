@@ -27,8 +27,10 @@ FastAPI: `GET /leads` (filters: city, category, has_website, has_phone, min_rati
 Vite + React SPA: TanStack Table leads view (filters/sort/pagination), detail drawer, Export CSV
 (current filters), Jobs page (trigger + status poll via TanStack Query).
 **Gate:** browse/filter/export in browser; UI-triggered job picked up by scraper poller → rows appear.
-- [~] code complete + `npm run build` passes (tsc + vite). Live browser walkthrough + poller end-to-end
-      not yet run (would launch a 2nd browser mid-session; deferred per one-life politeness).
+- [x] built + live-verified (2026-07-08). Starline light theme applied: pill sidebar (lime active,
+      greyed future items), topbar w/ live lead count, panels, muted-grey table w/ Address column,
+      lime pill pagination, detail drawer. `npm run build` green; browser walkthrough of Leads/Jobs/drawer OK.
+      (Scraper-poller end-to-end from UI still deferred — one-life politeness.)
 
 ## Phase 4 — Coverage expansion
 Query grid = category templates × locations (Dhaka areas; Kerala per-city: Kochi, Trivandrum, Kozhikode…).
