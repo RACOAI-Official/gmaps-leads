@@ -26,8 +26,11 @@ def _filtered_query(
     has_phone: bool | None,
     min_rating: float | None,
     search: str | None,
+    source_query: str | None = None,
 ) -> Select:
     q = select(Business)
+    if source_query:
+        q = q.where(Business.source_query.ilike(source_query))
     if city:
         q = q.where(Business.city.ilike(city))
     if category:
