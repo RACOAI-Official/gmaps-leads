@@ -7,7 +7,7 @@ from datetime import datetime, time as dtime, timezone
 
 from sqlalchemy import func, select
 
-from app.config import settings
+from app.config import get_runtime_config, settings
 from app.db.models import Business
 from app.db.session import SessionLocal
 
@@ -23,7 +23,9 @@ class DailyCapReached(Exception):
 
 
 def polite_delay() -> None:
-    delay = random.uniform(settings.scrape_delay_min_s, settings.scrape_delay_max_s)
+    # Read live config each call so Settings-tab edits apply to the next job.
+    cfg = get_runtime_config()
+    delay = random.uniform(cfg["scrape_delay_min_s"], cfg["scrape_delay_max_s"])
     time.sleep(delay)
 
 
@@ -38,10 +40,12 @@ def scraped_today() -> int:
 
 
 def check_daily_cap() -> None:
+    cfg = get_runtime_config()
+    cap = cfg["scrape_daily_cap"]
     count = scraped_today()
-    if count >= settings.scrape_daily_cap:
+    if count >= cap:
         raise DailyCapReached(
-            f"daily cap reached: {count}/{settings.scrape_daily_cap} places today"
+            f"daily cap reached: {count}/{cap} places today"
         )
 
 

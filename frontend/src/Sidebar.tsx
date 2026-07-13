@@ -3,19 +3,36 @@ import {
   EnrichIcon,
   ExportIcon,
   JobsIcon,
-  LockIcon,
   ScoreIcon,
   SettingsIcon,
   StarIcon,
 } from "./icons.tsx";
 
-export type Page = "leads" | "jobs";
+export type Page =
+  | "leads"
+  | "jobs"
+  | "enrichment"
+  | "scoring"
+  | "export"
+  | "settings";
 
-const FUTURE: { label: string; icon: React.ReactNode }[] = [
-  { label: "Enrichment", icon: <EnrichIcon /> },
-  { label: "Scoring", icon: <ScoreIcon /> },
-  { label: "Export", icon: <ExportIcon /> },
-  { label: "Settings", icon: <SettingsIcon /> },
+const NAV: { section: string; items: { label: string; page: Page; icon: React.ReactNode }[] }[] = [
+  {
+    section: "Workspace",
+    items: [
+      { label: "Dashboard", page: "leads", icon: <DashboardIcon /> },
+      { label: "Jobs", page: "jobs", icon: <JobsIcon /> },
+    ],
+  },
+  {
+    section: "Pipeline",
+    items: [
+      { label: "Enrichment", page: "enrichment", icon: <EnrichIcon /> },
+      { label: "Scoring", page: "scoring", icon: <ScoreIcon /> },
+      { label: "Export", page: "export", icon: <ExportIcon /> },
+      { label: "Settings", page: "settings", icon: <SettingsIcon /> },
+    ],
+  },
 ];
 
 export function Sidebar({
@@ -32,34 +49,20 @@ export function Sidebar({
         <span>Leadstar</span>
       </div>
 
-      <div className="nav-section-label">Workspace</div>
-      <button
-        className={`nav-pill ${page === "leads" ? "active" : ""}`}
-        onClick={() => onNavigate("leads")}
-      >
-        <DashboardIcon />
-        Dashboard
-      </button>
-      <button
-        className={`nav-pill ${page === "jobs" ? "active" : ""}`}
-        onClick={() => onNavigate("jobs")}
-      >
-        <JobsIcon />
-        Jobs
-      </button>
-
-      <div className="nav-section-label">Pipeline</div>
-      {FUTURE.map((item) => (
-        <button
-          key={item.label}
-          className="nav-pill disabled"
-          disabled
-          title="Coming in a later phase"
-        >
-          {item.icon}
-          {item.label}
-          <LockIcon />
-        </button>
+      {NAV.map((group) => (
+        <div key={group.section}>
+          <div className="nav-section-label">{group.section}</div>
+          {group.items.map((item) => (
+            <button
+              key={item.page}
+              className={`nav-pill ${page === item.page ? "active" : ""}`}
+              onClick={() => onNavigate(item.page)}
+            >
+              {item.icon}
+              {item.label}
+            </button>
+          ))}
+        </div>
       ))}
 
       <div className="spacer" />

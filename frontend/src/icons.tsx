@@ -60,13 +60,6 @@ export const SettingsIcon = ({ size = 18 }: P) => (
   </svg>
 );
 
-export const LockIcon = ({ size = 13 }: P) => (
-  <svg {...base(size)} className="lock">
-    <rect x="4" y="10" width="16" height="11" rx="2" />
-    <path d="M8 10V7a4 4 0 0 1 8 0v3" />
-  </svg>
-);
-
 export const SearchIcon = ({ size = 17 }: P) => (
   <svg {...base(size)}>
     <circle cx="11" cy="11" r="7" />
