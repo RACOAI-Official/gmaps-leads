@@ -2,18 +2,19 @@
 
   python -m app.scraper run --query "software company in Dhaka" --city Dhaka [--max 120]
   python -m app.scraper smoke-test
-  python -m app.scraper poll          # process pending scrape jobs from the jobs table
+
+Job polling for all job types (scrape | enrich | score) now lives in
+``app.worker`` (``python -m app.worker poll``), the single unified worker.
 """
 
 import argparse
 import logging
 import sys
-import time
 from datetime import datetime, timezone
 
 from sqlalchemy import select
 
-from app.db.models import Job
+from app.db.models import Business
 from app.db.session import SessionLocal
 
 logging.basicConfig(
@@ -72,52 +73,6 @@ def cmd_smoke_test(_args) -> int:
     return 0
 
 
-def cmd_poll(args) -> int:
-    from app.scraper.maps_task import run_query
-
-    log.info("job poller started (interval %ds)", args.interval)
-    while True:
-        with SessionLocal() as session:
-            job = session.scalars(
-                select(Job)
-                .where(Job.status == "pending", Job.type == "scrape")
-                .order_by(Job.id)
-                .limit(1)
-            ).first()
-            if job:
-                job.status = "running"
-                job.started_at = datetime.now(timezone.utc)
-                session.commit()
-                job_id, params = job.id, dict(job.params or {})
-
-        if not job:
-            time.sleep(args.interval)
-            continue
-
-        log.info("job %d: %s", job_id, params)
-        result = run_query(
-            params.get("query", ""),
-            params.get("city"),
-            int(params.get("max_results", 120)),
-        )
-        status = "done"
-        if result.get("blocked"):
-            status = "blocked"
-        elif result.get("cap_reached"):
-            status = "failed"
-        with SessionLocal() as session:
-            job = session.get(Job, job_id)
-            job.status = status
-            job.error = result.get("error")
-            job.progress = result.get("scraped", 0)
-            job.finished_at = datetime.now(timezone.utc)
-            session.commit()
-        log.info("job %d finished: %s", job_id, status)
-        if status == "blocked":
-            log.error("blocked — poller stopping; cool down before restart.")
-            return 2
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(prog="python -m app.scraper")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -130,10 +85,6 @@ def main() -> int:
 
     p_smoke = sub.add_parser("smoke-test", help="verify selectors on 3 known places")
     p_smoke.set_defaults(fn=cmd_smoke_test)
-
-    p_poll = sub.add_parser("poll", help="process pending scrape jobs")
-    p_poll.add_argument("--interval", type=int, default=10)
-    p_poll.set_defaults(fn=cmd_poll)
 
     args = parser.parse_args()
     return args.fn(args)

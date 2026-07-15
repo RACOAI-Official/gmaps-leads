@@ -1,31 +1,59 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Sidebar, type Page } from "./Sidebar.tsx";
+import { Topbar } from "./Topbar.tsx";
 import { LeadsPage } from "./LeadsPage.tsx";
 import { JobsPage } from "./JobsPage.tsx";
+import { EnrichmentPage } from "./EnrichmentPage.tsx";
+import { ScoringPage } from "./ScoringPage.tsx";
+import { ExportPage } from "./ExportPage.tsx";
+import { SettingsPage } from "./SettingsPage.tsx";
+import { fetchLeads } from "./api.ts";
 
-type Tab = "leads" | "jobs";
+const PAGE_META: Record<Page, { title: string; subtitle: string }> = {
+  leads: { title: "Lead Dashboard", subtitle: "Businesses scraped from Google Maps" },
+  jobs: { title: "Scrape Jobs", subtitle: "Queue and monitor Google Maps scrape runs" },
+  enrichment: {
+    title: "Enrichment",
+    subtitle: "Website crawl for emails, socials, and tech stack",
+  },
+  scoring: {
+    title: "Lead Scoring",
+    subtitle: "Ranked leads with rule-based scores and AI explanations",
+  },
+  export: { title: "Export", subtitle: "Build a filtered CSV of your leads" },
+  settings: { title: "Settings", subtitle: "Runtime config, data management, and LLM tools" },
+};
 
 export function App() {
-  const [tab, setTab] = useState<Tab>("leads");
+  const [page, setPage] = useState<Page>("leads");
+
+  const { data: count } = useQuery({
+    queryKey: ["leads-count"],
+    queryFn: () => fetchLeads({ page_size: 1 }),
+    select: (d) => d.total,
+  });
+
+  const meta = PAGE_META[page];
+  const subtitle =
+    page === "leads" && count != null
+      ? `${count.toLocaleString()} businesses scraped from Google Maps`
+      : meta.subtitle;
+
   return (
-    <div className="app">
-      <header className="topbar">
-        <h1>gmaps-leads</h1>
-        <nav>
-          <button
-            className={tab === "leads" ? "active" : ""}
-            onClick={() => setTab("leads")}
-          >
-            Leads
-          </button>
-          <button
-            className={tab === "jobs" ? "active" : ""}
-            onClick={() => setTab("jobs")}
-          >
-            Jobs
-          </button>
-        </nav>
-      </header>
-      {tab === "leads" ? <LeadsPage /> : <JobsPage />}
+    <div className="shell">
+      <div className="card">
+        <Sidebar page={page} onNavigate={setPage} />
+        <main className="main">
+          <Topbar title={meta.title} subtitle={subtitle} />
+          {page === "leads" && <LeadsPage />}
+          {page === "jobs" && <JobsPage />}
+          {page === "enrichment" && <EnrichmentPage />}
+          {page === "scoring" && <ScoringPage />}
+          {page === "export" && <ExportPage />}
+          {page === "settings" && <SettingsPage />}
+        </main>
+      </div>
     </div>
   );
 }

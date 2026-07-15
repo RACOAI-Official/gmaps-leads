@@ -1,1 +1,1 @@
-{"root":["./src/app.tsx","./src/jobspage.tsx","./src/leaddrawer.tsx","./src/leadspage.tsx","./src/api.ts","./src/main.tsx"],"version":"5.9.3"}
+{"root":["./src/App.tsx","./src/EnrichmentPage.tsx","./src/ExportPage.tsx","./src/JobsPage.tsx","./src/LeadDrawer.tsx","./src/LeadsPage.tsx","./src/ScoringPage.tsx","./src/SettingsPage.tsx","./src/Sidebar.tsx","./src/Topbar.tsx","./src/api.ts","./src/icons.tsx","./src/main.tsx"],"version":"5.9.3"}

@@ -7,16 +7,21 @@ from sqlalchemy import Select, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
-from app.db.models import Business
+from app.db.models import Business, Enrichment, Score
 
 router = APIRouter()
 
 SORTABLE = {"name", "rating", "reviews_count", "scraped_at", "city", "main_category"}
 
-CSV_COLUMNS = [
+# Core lead columns (default export set). Extra columns are appended when the
+# corresponding include_* flag is set on /api/export.csv.
+CSV_BASE_COLUMNS = [
     "id", "name", "main_category", "address", "city", "phone",
     "website", "rating", "reviews_count", "source_query", "scraped_at",
 ]
+CSV_SCORE_COLUMNS = ["score", "has_llm_summary"]
+CSV_ENRICH_COLUMNS = ["emails", "socials", "tech_stack"]
+ALL_CSV_COLUMNS = set(CSV_BASE_COLUMNS + CSV_SCORE_COLUMNS + CSV_ENRICH_COLUMNS)
 
 
 def _filtered_query(
@@ -26,8 +31,11 @@ def _filtered_query(
     has_phone: bool | None,
     min_rating: float | None,
     search: str | None,
+    source_query: str | None = None,
 ) -> Select:
     q = select(Business)
+    if source_query:
+        q = q.where(Business.source_query.ilike(source_query))
     if city:
         q = q.where(Business.city.ilike(city))
     if category:
@@ -115,25 +123,60 @@ def export_csv(
     has_phone: bool | None = None,
     min_rating: float | None = None,
     search: str | None = None,
+    columns: str | None = None,
+    include_score: bool = False,
+    include_enrichment: bool = False,
 ):
     q = _filtered_query(city, category, has_website, has_phone, min_rating, search)
     q = q.order_by(Business.name.asc())
 
+    # Resolve the column set: explicit ?columns= wins; otherwise base + flags.
+    if columns:
+        chosen = [c.strip() for c in columns.split(",") if c.strip() in ALL_CSV_COLUMNS]
+        if not chosen:
+            chosen = list(CSV_BASE_COLUMNS)
+    else:
+        chosen = list(CSV_BASE_COLUMNS)
+        if include_score:
+            chosen += [c for c in CSV_SCORE_COLUMNS if c not in chosen]
+        if include_enrichment:
+            chosen += [c for c in CSV_ENRICH_COLUMNS if c not in chosen]
+
+    need_score = bool(set(chosen) & set(CSV_SCORE_COLUMNS))
+    need_enrich = bool(set(chosen) & set(CSV_ENRICH_COLUMNS))
+
+    def _cell(b, s, e, col: str) -> str:
+        if col == "score":
+            return s.score if s and s.score is not None else ""
+        if col == "has_llm_summary":
+            return "yes" if (s and s.llm_summary) else "no"
+        if col == "emails":
+            return "; ".join(e.emails) if (e and e.emails) else ""
+        if col == "socials":
+            return "; ".join(f"{k}:{v}" for k, v in (e.socials or {}).items()) if e else ""
+        if col == "tech_stack":
+            return "; ".join(e.tech_stack) if (e and e.tech_stack) else ""
+        # base column on the business row
+        val = getattr(b, col)
+        if col == "scraped_at":
+            return val.isoformat() if val else ""
+        return val if val is not None else ""
+
     def generate():
         buf = io.StringIO()
         writer = csv.writer(buf)
-        writer.writerow(CSV_COLUMNS)
+        writer.writerow(chosen)
         yield buf.getvalue()
         buf.seek(0)
         buf.truncate(0)
         for b in db.scalars(q).yield_per(200):
-            writer.writerow(
-                [
-                    b.id, b.name, b.main_category, b.address, b.city, b.phone,
-                    b.website, b.rating, b.reviews_count, b.source_query,
-                    b.scraped_at.isoformat() if b.scraped_at else "",
-                ]
-            )
+            s = None
+            e = None
+            if need_score:
+                s = db.scalar(select(Score).where(Score.business_id == b.id))
+            if need_enrich:
+                e = db.scalar(select(Enrichment).where(Enrichment.business_id == b.id))
+            writer.writerow([_cell(b, s, e, c) for c in chosen])
             yield buf.getvalue()
             buf.seek(0)
             buf.truncate(0)

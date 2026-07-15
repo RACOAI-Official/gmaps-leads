@@ -13,30 +13,71 @@ import {
   type LeadFilters,
 } from "./api.ts";
 import { LeadDrawer } from "./LeadDrawer.tsx";
+import { ChevronLeft, ChevronRight } from "./icons.tsx";
 
 const columnHelper = createColumnHelper<Lead>();
 
 const columns = [
   columnHelper.accessor("name", { header: "Name" }),
-  columnHelper.accessor("main_category", { header: "Category" }),
-  columnHelper.accessor("city", { header: "City" }),
-  columnHelper.accessor("phone", { header: "Phone" }),
+  columnHelper.accessor("main_category", {
+    header: "Category",
+    cell: (c) => c.getValue() ?? <span className="muted">—</span>,
+  }),
+  columnHelper.accessor("address", {
+    header: "Address",
+    cell: (c) => c.getValue() ?? <span className="muted">—</span>,
+  }),
+  columnHelper.accessor("city", {
+    header: "City",
+    cell: (c) => c.getValue() ?? <span className="muted">—</span>,
+  }),
+  columnHelper.accessor("phone", {
+    header: "Phone",
+    cell: (c) => c.getValue() ?? <span className="muted">—</span>,
+  }),
   columnHelper.accessor("website", {
     header: "Website",
     cell: (c) =>
       c.getValue() ? (
-        <a href={c.getValue()!} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
+        <a
+          href={c.getValue()!}
+          target="_blank"
+          rel="noreferrer"
+          onClick={(e) => e.stopPropagation()}
+        >
           link
         </a>
       ) : (
         <span className="muted">—</span>
       ),
   }),
-  columnHelper.accessor("rating", { header: "Rating" }),
-  columnHelper.accessor("reviews_count", { header: "Reviews" }),
+  columnHelper.accessor("rating", {
+    header: "Rating",
+    cell: (c) =>
+      c.getValue() != null ? (
+        <span className="rating-chip">
+          <span className="star">★</span>
+          {c.getValue()}
+        </span>
+      ) : (
+        <span className="muted">—</span>
+      ),
+  }),
 ];
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 25;
+
+function pageList(current: number, max: number): (number | "…")[] {
+  if (max <= 7) return Array.from({ length: max }, (_, i) => i + 1);
+  const out: (number | "…")[] = [1];
+  const start = Math.max(2, current - 1);
+  const end = Math.min(max - 1, current + 1);
+  if (start > 2) out.push("…");
+  for (let i = start; i <= end; i++) out.push(i);
+  if (end < max - 1) out.push("…");
+  out.push(max);
+  return out;
+}
 
 export function LeadsPage() {
   const [filters, setFilters] = useState<LeadFilters>({
@@ -69,7 +110,9 @@ export function LeadsPage() {
   function patch(next: Partial<LeadFilters>) {
     setFilters((f) => ({ ...f, ...next, page: 1 }));
   }
-
+  function goTo(p: number) {
+    setFilters((f) => ({ ...f, page: p }));
+  }
   function toggleSort(colId: string) {
     setFilters((f) => ({
       ...f,
@@ -80,27 +123,39 @@ export function LeadsPage() {
   }
 
   return (
-    <>
+    <div className="panel">
+      <div className="panel-head">
+        <h3>Business Leads</h3>
+        <div className="right">
+          <a className="btn secondary" href={exportCsvUrl(filters)}>
+            Export CSV
+          </a>
+        </div>
+      </div>
+
       <div className="toolbar">
         <input
           placeholder="Search name / address…"
           defaultValue={filters.search ?? ""}
           onKeyDown={(e) => {
-            if (e.key === "Enter") patch({ search: (e.target as HTMLInputElement).value });
+            if (e.key === "Enter")
+              patch({ search: (e.target as HTMLInputElement).value });
           }}
         />
         <input
           placeholder="City"
           defaultValue={filters.city ?? ""}
           onKeyDown={(e) => {
-            if (e.key === "Enter") patch({ city: (e.target as HTMLInputElement).value });
+            if (e.key === "Enter")
+              patch({ city: (e.target as HTMLInputElement).value });
           }}
         />
         <input
           placeholder="Category"
           defaultValue={filters.category ?? ""}
           onKeyDown={(e) => {
-            if (e.key === "Enter") patch({ category: (e.target as HTMLInputElement).value });
+            if (e.key === "Enter")
+              patch({ category: (e.target as HTMLInputElement).value });
           }}
         />
         <label className="check">
@@ -130,15 +185,10 @@ export function LeadsPage() {
           <option value="4">4+</option>
           <option value="4.5">4.5+</option>
         </select>
-        <a className="btn secondary" href={exportCsvUrl(filters)}>
-          Export CSV
-        </a>
-        <span className="count">
-          {isFetching ? "…" : `${total} leads`}
-        </span>
+        <span className="count">{isFetching ? "…" : `${total} leads`}</span>
       </div>
 
-      <div style={{ overflowX: "auto" }}>
+      <div className="table-wrap">
         <table>
           <thead>
             {table.getHeaderGroups().map((hg) => (
@@ -153,6 +203,7 @@ export function LeadsPage() {
                       : ""}
                   </th>
                 ))}
+                <th style={{ width: 40 }} />
               </tr>
             ))}
           </thead>
@@ -164,11 +215,23 @@ export function LeadsPage() {
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
                 ))}
+                <td>
+                  <button
+                    className="dots-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelected(row.original);
+                    }}
+                    title="Details"
+                  >
+                    ⋯
+                  </button>
+                </td>
               </tr>
             ))}
             {rows.length === 0 && !isFetching && (
               <tr>
-                <td colSpan={columns.length} className="muted">
+                <td colSpan={columns.length + 1} className="muted">
                   No leads match these filters.
                 </td>
               </tr>
@@ -179,25 +242,37 @@ export function LeadsPage() {
 
       <div className="pager">
         <button
-          className="btn secondary"
+          className="page-pill nav"
           disabled={page <= 1}
-          onClick={() => setFilters((f) => ({ ...f, page: (f.page ?? 1) - 1 }))}
+          onClick={() => goTo(page - 1)}
         >
-          Prev
+          <ChevronLeft />
         </button>
-        <span>
-          Page {page} / {maxPage}
-        </span>
+        {pageList(page, maxPage).map((p, i) =>
+          p === "…" ? (
+            <span key={`e${i}`} className="page-ellipsis">
+              …
+            </span>
+          ) : (
+            <button
+              key={p}
+              className={`page-pill ${p === page ? "active" : ""}`}
+              onClick={() => goTo(p)}
+            >
+              {p}
+            </button>
+          ),
+        )}
         <button
-          className="btn secondary"
+          className="page-pill nav"
           disabled={page >= maxPage}
-          onClick={() => setFilters((f) => ({ ...f, page: (f.page ?? 1) + 1 }))}
+          onClick={() => goTo(page + 1)}
         >
-          Next
+          <ChevronRight />
         </button>
       </div>
 
       {selected && <LeadDrawer lead={selected} onClose={() => setSelected(null)} />}
-    </>
+    </div>
   );
 }
